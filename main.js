@@ -171,10 +171,24 @@
     });
   }
 
+  /* На телефоне карточка подписи висит под точкой: удерживаем её в пределах экрана */
+  function clampNotes() {
+    var mobile = innerWidth < 760;
+    $$('.hero__marks .note').forEach(function (n) {
+      var card = $('.note__card', n), dot = $('.note__dot', n);
+      if (!mobile) { card.style.left = card.style.right = ''; return; }
+      var dr = dot.getBoundingClientRect(), x = dr.left + dr.width / 2, w = card.offsetWidth || 168;
+      card.style.right = 'auto';
+      card.style.left = Math.min(Math.max(-60, 16 - x), innerWidth - 16 - w - x) + 'px';
+    });
+  }
+  addEventListener('resize', function () { requestAnimationFrame(clampNotes); });
+  addEventListener('load', clampNotes);
+
   /* Видео: подгружаем версию по ширине экрана, перематываем с мягким догоном к цели */
   function setupHeroVideo() {
     var video = $('.hero__video');
-    if (!video || window.MA_TWEAKS && window.MA_TWEAKS.video === false) return null;
+    if (!video) return null;
     var small = innerWidth < 900 || (navigator.connection && navigator.connection.saveData);
     var src = video.getAttribute(small ? 'data-src-small' : 'data-src');
     var state = { target: 0, cur: 0, ready: false, active: true };
@@ -200,8 +214,7 @@
     addEventListener('touchstart', unlock, { passive: true });
     (function tick() {
       if (state.ready && state.active && video.duration) {
-        var smooth = (window.MA_TWEAKS && window.MA_TWEAKS.smooth) || 0.16;
-        state.cur += (state.target - state.cur) * smooth;
+        state.cur += (state.target - state.cur) * 0.05;   // мягкий догон
         if (Math.abs(video.currentTime - state.cur) > 0.02 && !video.seeking) video.currentTime = state.cur;
       }
       requestAnimationFrame(tick);
@@ -229,7 +242,7 @@
       if (vs) { vs.target = heroTime(p, vs.video.duration || 24); vs.active = p < 1; }
       if (innerWidth < 760) {
         document.documentElement.style.setProperty('--hx', lerpMap(HERO_SCENE.mobileFocus, p).toFixed(4));
-        if (window.MA_clampNotes) window.MA_clampNotes();
+        clampNotes();
       }
     }
 

@@ -1,5 +1,5 @@
 /* Мир аквариумов — «Глубина»: погружение от поверхности к рифовому дну.
-   Все переменные из блока «Твики» меняются панелью настроек (tweaks.js). */
+   Значения в блоке «Настройки» зафиксированы по выбору заказчика (04.10.2026). */
 :root {
   --water-surface: #A5D3EC;
   --water-shallow: #5FA9D6;
@@ -15,12 +15,12 @@
   --ink: #0B2747;      /* тёмный морской — текст на светлой воде hero */
   --teal: #0E7896;
 
-  /* фон страницы: три ступени глубины */
-  --bg-1: #183B67;
-  --bg-2: #1a4272;
-  --bg-3: #152c55;
-  --bg-4: #121A36;
-  --bg-5: #0e1630;
+  /* фон страницы: ступени глубины, вода «Лагуна» */
+  --bg-1: #2e7fb3;
+  --bg-2: #2a75a8;
+  --bg-3: #23639a;
+  --bg-4: #1d5287;
+  --bg-5: #173f6e;
 
   --font: 'Montserrat', system-ui, sans-serif;
   --ease: cubic-bezier(.22, .61, .36, 1);
@@ -28,23 +28,25 @@
   --gutter: clamp(16px, 6.5vw, 104px);
   /* левый край текста hero: не ближе 84px к рамке, чтобы не наезжать на «Вниз, к рифу» */
   --hero-left: max(var(--gutter), calc(var(--inset) + 84px));
-  --inset: var(--inset-user, 28px);
+  --inset-user: 0px;  /* рамка вокруг кадра hero */
+  --inset: var(--inset-user);
   --vh: 100vh;
+  --hero-len: 700;    /* длина сцены hero, в vh */
 
-  /* Твики */
-  --fs: 1;            /* масштаб основного текста */
-  --fh: 1;            /* масштаб заголовков */
+  /* Настройки */
+  --fs: 1.12;         /* масштаб основного текста */
+  --fh: 1.07;         /* масштаб заголовков */
   --wh: 300;          /* начертание заголовков */
   --tt: uppercase;    /* регистр заголовков */
   --img: 1;           /* размер картинок */
   --rad: 1;           /* скругления */
   --sat: 1;           /* насыщенность фото */
   --bri: 1;           /* яркость фото */
-  --shade: .55;       /* затемнение под текстом hero */
-  --rays: .55;        /* лучи в hero */
+  --shade: .61;       /* затемнение под текстом hero */
+  --rays: .82;        /* лучи в hero */
   --silt: .75;        /* взвесь */
   --hz: 1;            /* масштаб фото hero */
-  --hx: .5;           /* горизонтальный фокус фото hero */
+  --hx: .55;          /* горизонтальный фокус фото hero */
   --hy: .5;
   --fx: 65%;          /* точка, к которой приближается камера */
   --fy: 50%;
@@ -134,7 +136,6 @@ h2 { text-wrap: balance; }
 .gauge__fill { position: absolute; left: -.5px; top: 0; width: 2px; height: 100%; background: var(--foam); transform-origin: top; transform: scaleY(var(--depth, 0)); }
 .gauge__num { letter-spacing: .06em; white-space: nowrap; }
 .gauge__num b { font-weight: 500; color: var(--foam); font-size: calc(13px * var(--fs)); }
-html.no-gauge .gauge { display: none; }
 .gauge { transition: opacity .5s; }
 html.is-hero .gauge { opacity: 0; pointer-events: none; }
 
@@ -169,9 +170,7 @@ html.is-hero .gauge { opacity: 0; pointer-events: none; }
 .hero__photo img, .hero__photo video { width: 100%; height: 100%; object-fit: cover; }
 .hero__video { position: absolute; inset: 0; opacity: 0; transition: opacity .6s; }
 .hero__video.is-ready { opacity: 1; }
-html.no-video .hero__video { display: none; }
 .hero__marks { z-index: 3; pointer-events: none; }
-html.no-notes .hero__marks { display: none; }
 
 .hero__rays {
   position: absolute; inset: -20% -10% 0; pointer-events: none; mix-blend-mode: screen; opacity: var(--rays);
