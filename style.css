@@ -1,0 +1,512 @@
+/* Мир аквариумов — «Глубина»: погружение от поверхности к рифовому дну.
+   Все переменные из блока «Твики» меняются панелью настроек (tweaks.js). */
+:root {
+  --water-surface: #A5D3EC;
+  --water-shallow: #5FA9D6;
+  --water-mid: #145D94;
+  --water-deep: #183B67;
+  --water-abyss: #121A36;
+  --foam: #F3F5FC;
+  --pearl: #DCE3F5;
+  --lilac: #ADA6D6;
+  --clown: #FF7A3D;
+  --peach: #F6B79E;
+  --glow: #5FD6E8;
+  --ink: #0B2747;      /* тёмный морской — текст на светлой воде hero */
+  --teal: #0E7896;
+
+  /* фон страницы: три ступени глубины */
+  --bg-1: #183B67;
+  --bg-2: #1a4272;
+  --bg-3: #152c55;
+  --bg-4: #121A36;
+  --bg-5: #0e1630;
+
+  --font: 'Montserrat', system-ui, sans-serif;
+  --ease: cubic-bezier(.22, .61, .36, 1);
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --gutter: clamp(16px, 6.5vw, 104px);
+  /* левый край текста hero: не ближе 84px к рамке, чтобы не наезжать на «Вниз, к рифу» */
+  --hero-left: max(var(--gutter), calc(var(--inset) + 84px));
+  --inset: var(--inset-user, 28px);
+  --vh: 100vh;
+
+  /* Твики */
+  --fs: 1;            /* масштаб основного текста */
+  --fh: 1;            /* масштаб заголовков */
+  --wh: 300;          /* начертание заголовков */
+  --tt: uppercase;    /* регистр заголовков */
+  --img: 1;           /* размер картинок */
+  --rad: 1;           /* скругления */
+  --sat: 1;           /* насыщенность фото */
+  --bri: 1;           /* яркость фото */
+  --shade: .55;       /* затемнение под текстом hero */
+  --rays: .55;        /* лучи в hero */
+  --silt: .75;        /* взвесь */
+  --hz: 1;            /* масштаб фото hero */
+  --hx: .5;           /* горизонтальный фокус фото hero */
+  --hy: .5;
+  --fx: 65%;          /* точка, к которой приближается камера */
+  --fy: 50%;
+  --open: 0;          /* раскрытие рамки hero, анимирует main.js */
+  --hero-img: url(assets/img/hero-1.webp);
+  --floor-img: url(assets/img/floor-1.webp);
+}
+@supports (height: 100svh) { :root { --vh: 100svh; } }
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scrollbar-color: #2b4f80 var(--bg-4); scrollbar-width: thin; }
+body {
+  margin: 0;
+  font: 400 calc(16px * var(--fs))/1.7 var(--font);
+  color: var(--foam);
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 22%, var(--bg-3) 46%, var(--bg-4) 78%, var(--bg-5) 100%);
+  background-color: var(--bg-4);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  transition: background .6s;
+}
+::selection { background: var(--glow); color: var(--water-abyss); }
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: var(--bg-4); }
+::-webkit-scrollbar-thumb { background: #2b4f80; border-radius: 10px; border: 2px solid var(--bg-4); }
+img, video { display: block; max-width: 100%; }
+a { color: inherit; text-decoration: none; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--glow); outline-offset: 4px; border-radius: 4px; }
+h1, h2, h3, p, figure, dl, dd, ul, ol { margin: 0; padding: 0; }
+ul, ol { list-style: none; }
+svg { width: 18px; height: 18px; flex: none; }
+h2 { text-wrap: balance; }
+
+/* Фото контента: общая цветокоррекция из твиков */
+.hall__window img, .step img, .place img, .floor__bg, .reef__video { filter: saturate(var(--sat)) brightness(var(--bri)); }
+
+/* Заголовки: начертание и регистр из твиков */
+.hero__title, .hall__intro h2, .hall__name, .reef__title, .reef__caption, .start__title, .places__title, .floor__phone { font-weight: var(--wh); text-transform: var(--tt); }
+.step h3 { font-weight: calc(var(--wh) + 100); text-transform: var(--tt); }
+
+/* ---------- Взвесь в воде ---------- */
+.silt { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 15; pointer-events: none; opacity: var(--silt); }
+
+/* ---------- Шапка ---------- */
+.top {
+  position: fixed; z-index: 30; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 48px;
+  padding: 22px calc(var(--inset) + 36px) 0;
+  transform: translateY(var(--inset));
+  pointer-events: none;
+  transition: transform .6s var(--ease);
+}
+.top > * { pointer-events: auto; }
+.top::before { content: ''; position: absolute; inset: 0 0 -16px; z-index: -1; background: rgba(14, 22, 48, .84); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-bottom: 1px solid rgba(173, 166, 214, .14); opacity: 0; transition: opacity .5s; pointer-events: none; }
+.top.is-open { transform: none; }
+.top.is-open::before { opacity: 1; }
+.logo { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: calc(11px * var(--fs)); line-height: 1.25; letter-spacing: .2em; text-transform: uppercase; transition: color .4s; }
+.logo svg { width: 38px; height: 38px; color: var(--glow); transition: color .4s; }
+.top__nav { display: flex; gap: 36px; margin-left: auto; padding: 8px 4px; border-radius: 999px; font-size: calc(13px * var(--fs)); font-weight: 600; letter-spacing: .03em; transition: background .4s, padding .4s; }
+.top__nav a { position: relative; padding: 6px 0; color: rgba(243, 245, 252, .9); transition: color .3s; }
+/* Над светлым hero шапка тёмная, на светлом стекле: текст не сливается ни с водой, ни с рыбой */
+.top:not(.is-open) .logo { color: var(--ink); }
+.top:not(.is-open) .logo svg { color: var(--teal); }
+.top:not(.is-open) .top__nav { padding: 8px 26px; background: rgba(238, 250, 253, .62); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.top:not(.is-open) .top__nav a, .top:not(.is-open) .top__nav a:hover, .top:not(.is-open) .top__nav a.is-here { color: var(--ink); }
+.top:not(.is-open) .top__phone { color: var(--ink); background: rgba(238, 250, 253, .62); border-color: rgba(11, 39, 71, .14); }
+.top:not(.is-open) .top__phone svg { color: var(--teal); }
+.top__nav a::after { content: ''; position: absolute; left: 0; bottom: 0; width: 16px; height: 2px; background: var(--clown); transform: scaleX(0); transform-origin: left; transition: transform .35s var(--ease-out); }
+.top__nav a:hover { color: var(--foam); }
+.top__nav a:hover::after, .top__nav a.is-here::after { transform: scaleX(1); }
+.top__nav a.is-here { color: var(--foam); }
+.top__phone { display: flex; align-items: center; gap: 10px; font-size: calc(14px * var(--fs)); font-weight: 600; letter-spacing: .02em; padding: 12px 18px; border: 1px solid rgba(220, 227, 245, .3); border-radius: 999px; background: rgba(18, 26, 54, .22); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: border-color .3s, background .3s, color .4s; }
+.top__phone:hover { border-color: var(--glow); background: rgba(95, 214, 232, .14); }
+.top__phone svg { width: 16px; height: 16px; color: var(--glow); }
+
+/* ---------- Шкала глубины ---------- */
+/* шкала на тёмном стекле: читается и над светлой водой hero, и над тёмным фоном */
+.gauge {
+  position: fixed; z-index: 25; right: calc(var(--inset) + 14px); top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 16px 8px 14px; border-radius: 999px;
+  background: rgba(12, 24, 52, .66); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  font-size: calc(11px * var(--fs)); font-weight: 600; letter-spacing: .2em; color: var(--pearl); font-variant-numeric: tabular-nums;
+}
+.gauge__cap { writing-mode: vertical-rl; transform: rotate(180deg); text-transform: uppercase; letter-spacing: .32em; }
+.gauge__rail { position: relative; width: 1px; height: 26vh; background: rgba(220, 227, 245, .35); }
+.gauge__fill { position: absolute; left: -.5px; top: 0; width: 2px; height: 100%; background: var(--foam); transform-origin: top; transform: scaleY(var(--depth, 0)); }
+.gauge__num { letter-spacing: .06em; white-space: nowrap; }
+.gauge__num b { font-weight: 500; color: var(--foam); font-size: calc(13px * var(--fs)); }
+html.no-gauge .gauge { display: none; }
+.gauge { transition: opacity .5s; }
+html.is-hero .gauge { opacity: 0; pointer-events: none; }
+
+/* ---------- HERO ---------- */
+.hero { position: relative; height: calc(var(--hero-len, 560) * 1vh); }
+.hero__pin { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+.hero__backdrop {
+  position: absolute; inset: 0;
+  background: var(--hero-img) center / cover no-repeat;
+  filter: blur(26px) saturate(1.1) brightness(.7); transform: scale(1.15);
+}
+.hero__frame {
+  position: absolute; inset: 0; overflow: hidden;
+  clip-path: inset(calc(var(--inset) * (1 - var(--open))) round calc(22px * var(--rad) * (1 - var(--open))));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .5);
+  background: var(--water-shallow);
+}
+.hero__scene { position: absolute; inset: 0; }
+
+/* Сцена-кадр: всегда соотношение исходного фото, покрывает экран (как object-fit: cover),
+   плюс масштаб и сдвиг из твиков. Подписи лежат в таком же кадре, поэтому совпадают с рыбой. */
+.hero__stage {
+  --ar: 1.7917;
+  --sw: calc(max(100vw, var(--vh) * var(--ar)) * var(--hz));
+  position: absolute;
+  width: var(--sw); height: calc(var(--sw) / var(--ar));
+  left: calc((100vw - var(--sw)) * var(--hx));
+  top: calc((var(--vh) - var(--sw) / var(--ar)) * var(--hy));
+  transform-origin: var(--fx) var(--fy);
+  will-change: transform;
+}
+.hero__photo img, .hero__photo video { width: 100%; height: 100%; object-fit: cover; }
+.hero__video { position: absolute; inset: 0; opacity: 0; transition: opacity .6s; }
+.hero__video.is-ready { opacity: 1; }
+html.no-video .hero__video { display: none; }
+.hero__marks { z-index: 3; pointer-events: none; }
+html.no-notes .hero__marks { display: none; }
+
+.hero__rays {
+  position: absolute; inset: -20% -10% 0; pointer-events: none; mix-blend-mode: screen; opacity: var(--rays);
+  background:
+    repeating-conic-gradient(from 188deg at 46% -8%, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, .16) 2.5deg, rgba(255, 255, 255, 0) 6deg, rgba(255, 255, 255, 0) 11deg);
+  -webkit-mask: linear-gradient(180deg, #000 0%, rgba(0,0,0,.6) 40%, transparent 75%);
+  mask: linear-gradient(180deg, #000 0%, rgba(0,0,0,.6) 40%, transparent 75%);
+  animation: rays 14s ease-in-out infinite alternate;
+}
+@keyframes rays { from { transform: rotate(-2deg) translateX(-1%); } to { transform: rotate(2deg) translateX(1%); } }
+/* Светлая вуаль слева: высветляет воду под тёмным текстом, фото остаётся светлым. Сила — из твиков. */
+.hero__shade {
+  position: absolute; inset: 0; opacity: var(--shade);
+  background:
+    radial-gradient(ellipse 62% 70% at 18% 56%, rgba(226, 247, 251, .82) 0%, rgba(226, 247, 251, .45) 45%, rgba(226, 247, 251, 0) 75%),
+    linear-gradient(180deg, rgba(226, 247, 251, .45) 0%, rgba(226, 247, 251, 0) 16%);
+}
+
+.hero__title {
+  position: absolute; z-index: 2; left: var(--hero-left); top: 42%;
+  transform: translateY(-62%);
+  line-height: .98; color: var(--ink);
+  display: flex; flex-direction: column;
+  /* светлый ореол: тёмные буквы читаются и на воде, и там, где заходят на рыбу */
+  text-shadow: 0 0 2px rgba(240, 252, 255, .9), 0 0 18px rgba(240, 252, 255, .75), 0 0 46px rgba(240, 252, 255, .5);
+}
+.hero__title .t1 { font-size: calc(clamp(34px, 4.6vw, 74px) * var(--fh)); letter-spacing: .42em; margin-bottom: .18em; }
+.hero__title .t2 { font-size: calc(clamp(40px, 7.1vw, 116px) * var(--fh)); letter-spacing: .1em; margin-right: -.1em; }
+
+/* Пояснения к рыбе: --x/--y в % кадра, --dy сдвигает карточку по вертикали */
+.note { position: absolute; left: var(--x); top: var(--y); width: 0; height: 0; opacity: 0; visibility: hidden; transition: opacity .35s, visibility 0s .35s; }
+.note.is-shown { opacity: 1; visibility: visible; transition: opacity .35s; }
+.note .note__dot { transform: scale(0); }
+.note .note__line { transform: scale(0); transition: transform .45s var(--ease-out) .1s; }
+.note .note__card { opacity: 0; transform: translateY(10px); transition: opacity .45s var(--ease-out) .25s, transform .45s var(--ease-out) .25s; }
+.note.is-shown .note__dot, .note.is-shown .note__line { transform: scale(1); }
+.note.is-shown .note__card { opacity: 1; transform: none; }
+.note__dot {
+  position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--foam); box-shadow: 0 0 0 4px rgba(243, 245, 252, .25), 0 2px 10px rgba(18, 26, 54, .35);
+  transition: background .4s, box-shadow .4s, transform .35s cubic-bezier(.34, 1.8, .64, 1);
+}
+.note.is-active .note__dot { background: var(--clown); box-shadow: 0 0 0 5px rgba(255, 122, 61, .25); animation: ping 1.8s var(--ease-out) infinite; }
+@keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(255, 122, 61, .55); } 100% { box-shadow: 0 0 0 16px rgba(255, 122, 61, 0); } }
+.note__line { position: absolute; top: 0; height: 1px; width: var(--len, 96px); background: linear-gradient(90deg, rgba(243, 245, 252, .95), rgba(243, 245, 252, .45)); transform-origin: left; }
+.note--l .note__line { right: 0; transform-origin: right; background: linear-gradient(270deg, rgba(243, 245, 252, .95), rgba(243, 245, 252, .45)); }
+.note--r .note__line { left: 0; }
+.note__card {
+  position: absolute; top: 0; translate: 0 calc(-50% + var(--dy, 0px)); width: calc(216px * var(--fs));
+  padding: 14px 16px; border-radius: calc(12px * var(--rad));
+  background: rgba(12, 30, 62, .8); border: 1px solid rgba(220, 227, 245, .2);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.note--l .note__card { right: calc(var(--len, 96px) + 8px); }
+.note--r .note__card { left: calc(var(--len, 96px) + 8px); }
+/* 'd': линия вниз, карточка под рыбой, флажком влево от линии */
+.note--d .note__line, .note--dr .note__line { left: 0; width: 1px; height: var(--len); transform-origin: top; background: linear-gradient(180deg, rgba(243, 245, 252, .95), rgba(243, 245, 252, .45)); }
+.note--d .note__card, .note--dr .note__card { top: var(--len); translate: 0 6px; }
+.note--d .note__card { right: 20px; }
+.note--dr .note__card { left: 20px; }
+.note__card b { font-size: calc(13px * var(--fs)); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.note__card span { font-size: calc(13px * var(--fs)); line-height: 1.45; color: #E9EEF9; }
+.note:not(.is-active) .note__card b { color: var(--pearl); }
+
+.hero__lead {
+  position: absolute; z-index: 2; left: var(--hero-left); bottom: 17vh;
+  max-width: 25em; font-size: calc(clamp(16px, 1.25vw, 19px) * var(--fs)); font-weight: 600; line-height: 1.65; color: var(--ink);
+  text-shadow: 0 0 2px rgba(240, 252, 255, .9), 0 0 16px rgba(240, 252, 255, .8);
+}
+/* Остановки камеры: четыре чёрточки внизу по центру, активная — коралловая и длиннее */
+.hero__steps { position: absolute; z-index: 4; left: 50%; bottom: calc(var(--inset) + 40px); translate: -50% 0; display: flex; gap: 8px; margin: 0; padding: 10px 14px; list-style: none; border-radius: 999px; background: rgba(14, 26, 54, .38); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.hero__steps li { width: 18px; height: 3px; border-radius: 3px; background: rgba(243, 245, 252, .45); transition: width .4s var(--ease-out), background .4s; }
+.hero__steps li.is-on { width: 34px; background: var(--clown); }
+.hero__steps li.is-done { background: var(--foam); }
+
+.hero__cue {
+  position: absolute; z-index: 4; left: calc(var(--inset) + 26px); bottom: calc(var(--inset) + 32px);
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  font-size: calc(11px * var(--fs)); font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--ink);
+  text-shadow: 0 0 10px rgba(240, 252, 255, .9);
+}
+.hero__cue span { writing-mode: vertical-rl; transform: rotate(180deg); }
+.hero__cue svg { order: 2; width: 16px; height: 16px; color: var(--clown); animation: nudge 2.4s var(--ease) infinite; }
+@keyframes nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+.hero__cue:hover { color: var(--teal); }
+
+.visit {
+  position: absolute; z-index: 4; right: calc(var(--inset) + 32px); bottom: calc(var(--inset) + 32px);
+  display: flex; align-items: center; gap: 22px;
+  padding: 14px 14px 14px 22px; border-radius: calc(16px * var(--rad));
+  background: rgba(12, 30, 62, .74); border: 1px solid rgba(220, 227, 245, .2);
+  -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+}
+.visit__row { display: flex; align-items: center; gap: 10px; font-size: calc(14px * var(--fs)); font-weight: 500; color: var(--foam); }
+.visit__row svg { color: var(--glow); }
+.visit__call {
+  display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 20px; border-radius: calc(10px * var(--rad));
+  background: var(--clown); color: var(--water-abyss); font-weight: 600; font-size: calc(14px * var(--fs)); letter-spacing: .02em;
+  transition: background .3s, transform .3s var(--ease-out);
+}
+.visit__call:hover { background: var(--peach); }
+.visit__call:hover svg { transform: translateX(3px); }
+.visit__call svg { transition: transform .3s var(--ease-out); }
+
+/* ---------- ЗАЛ ---------- */
+.hall { position: relative; z-index: 2; padding: 22vh var(--gutter) 18vh; scroll-margin-top: 90px; overflow-x: clip; }
+.hall__intro { display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; align-items: end; margin-bottom: 9vh; }
+.hall__intro h2 { font-size: calc(clamp(34px, 4.4vw, 68px) * var(--fh)); line-height: 1.05; letter-spacing: .04em; }
+.hall__intro p { max-width: 24em; font-size: calc(17px * var(--fs)); font-weight: 400; color: var(--pearl); justify-self: end; }
+.hall__body { display: grid; grid-template-columns: minmax(0, 1fr) calc(32vw * var(--img)); gap: 6vw; align-items: start; }
+.hall__list li {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 24px;
+  padding: 2.6vh 0; border-top: 1px solid rgba(173, 166, 214, .16);
+  cursor: default;
+}
+.hall__list li:last-child { border-bottom: 1px solid rgba(173, 166, 214, .16); }
+.hall__name {
+  position: relative; font-size: calc(clamp(26px, 3.3vw, 52px) * var(--fh)); line-height: 1.1;
+  letter-spacing: .05em; color: rgba(243, 245, 252, .52);
+  transition: color .5s var(--ease), transform .6s var(--ease-out);
+}
+.hall__name::before {
+  content: ''; position: absolute; left: -26px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
+  background: var(--clown); transform: scale(0); transition: transform .5s var(--ease-out);
+}
+.hall__hint { font-size: calc(13px * var(--fs)); letter-spacing: .04em; color: var(--lilac); opacity: .9; text-align: right; transition: opacity .5s; }
+.hall__list li.is-on .hall__name { color: var(--foam); transform: translateX(26px); }
+.hall__list li.is-on .hall__name::before { transform: scale(1); }
+.hall__list li.is-on .hall__hint { opacity: 1; }
+.hall__window {
+  position: sticky; top: calc(50vh - 34vh * var(--img)); height: calc(68vh * var(--img)); max-height: 92vh;
+  border-radius: calc(200px * var(--rad)) calc(200px * var(--rad)) calc(20px * var(--rad)) calc(20px * var(--rad)); overflow: hidden;
+  background: var(--water-deep);
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .6);
+}
+.hall__window img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  clip-path: inset(100% 0 0 0); transform: scale(1.12);
+  transition: clip-path 1s var(--ease-out), transform 1.6s var(--ease-out);
+}
+.hall__window img.is-on { clip-path: inset(0 0 0 0); transform: scale(1); }
+.hall__window img.is-prev { clip-path: inset(0 0 0 0); transform: scale(1); transition: none; }
+
+/* ---------- РИФ ---------- */
+.reef { position: relative; z-index: 2; height: 300vh; }
+.reef__pin { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+.reef__window {
+  position: absolute; inset: 0; overflow: hidden;
+  clip-path: inset(13vh 37% 13vh 37% round 30vh 30vh 18px 18px);
+  background: var(--water-deep);
+}
+.reef__video { width: 100%; height: 100%; object-fit: cover; }
+.reef__window::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(18, 26, 54, .6) 78%, #131c3b 100%); opacity: var(--shade-reef, 0); }
+.reef__title {
+  position: absolute; inset: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--gutter); pointer-events: none;
+  /* размер подобран так, чтобы «Морской» не заходил на светлое окно с видео */
+  font-size: calc(clamp(36px, 4.6vw, 96px) * var(--fh)); letter-spacing: .1em; line-height: 1;
+}
+.reef__title span:last-child { margin-right: -.1em; }
+.reef__side {
+  position: absolute; z-index: 2; right: var(--gutter); bottom: 15vh; max-width: 19em;
+  font-size: calc(16px * var(--fs)); font-weight: 400; color: var(--pearl); text-align: right;
+}
+.reef__caption {
+  position: absolute; z-index: 2; left: var(--gutter); bottom: 12vh; max-width: 14em;
+  font-size: calc(clamp(30px, 3.6vw, 56px) * var(--fh)); line-height: 1.15; letter-spacing: .02em;
+  text-transform: none !important;
+  opacity: 0;
+}
+
+/* ---------- ПЕРВЫЙ АКВАРИУМ ---------- */
+.start { position: relative; z-index: 2; }
+.start__pin { position: relative; height: 100vh; height: 100svh; overflow: hidden; display: flex; align-items: flex-end; padding-bottom: 9vh; }
+.start__title {
+  position: absolute; left: var(--gutter); top: 11vh; z-index: 2;
+  font-size: calc(clamp(28px, 3vw, 48px) * var(--fh)); line-height: 1.12; letter-spacing: .03em;
+}
+.start__track { display: flex; align-items: flex-end; gap: 6vw; padding-left: calc(var(--gutter) + 30vw); padding-right: 14vw; will-change: transform; }
+/* ширина шагов ограничена и высотой экрана: на низких экранах карточки не заезжают под заголовок */
+.step { flex: none; width: calc(min(22vw, 36vh) * var(--img)); display: flex; flex-direction: column; gap: 28px; }
+.step img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: calc(18px * var(--rad)); }
+.step--tall { width: calc(min(18vw, 30vh) * var(--img)); }
+.step--tall img { aspect-ratio: 3 / 4.4; border-radius: calc(160px * var(--rad)) calc(160px * var(--rad)) calc(18px * var(--rad)) calc(18px * var(--rad)); }
+.step--wide { width: calc(min(32vw, 54vh) * var(--img)); }
+.step--wide img { aspect-ratio: 16 / 10; }
+html.no-scrub .start__track { max-width: 100%; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; }
+html.no-scrub .step { scroll-snap-align: center; }
+.step__text { display: grid; grid-template-columns: auto 1fr; column-gap: 20px; align-items: baseline; }
+.step__n { grid-row: span 2; font-weight: 300; font-size: calc(64px * var(--fh)); line-height: .9; color: var(--glow); font-variant-numeric: tabular-nums; }
+.step h3 { font-size: calc(26px * var(--fh)); letter-spacing: .1em; }
+.step p { max-width: 22em; font-size: calc(15px * var(--fs)); color: var(--pearl); }
+
+/* ---------- ДОМ / ОФИС / ЧАСТНЫЙ ДОМ ---------- */
+/* Три кадра крупно и плотно: дом справа сверху, офис слева, частный дом справа ниже */
+.places { position: relative; z-index: 2; height: calc(92vw * var(--img)); margin-top: 8vh; }
+.places__title {
+  position: absolute; left: var(--gutter); top: 6vw;
+  font-size: calc(clamp(34px, 4.6vw, 72px) * var(--fh)); line-height: 1.05; letter-spacing: .05em;
+}
+.place { position: absolute; display: flex; flex-direction: column; gap: 16px; will-change: transform; }
+.place img { width: 100%; object-fit: cover; border-radius: calc(16px * var(--rad)); }
+.place figcaption { display: flex; flex-direction: column; gap: 4px; font-size: calc(15px * var(--fs)); color: var(--pearl); max-width: 24em; }
+.place figcaption b { font-weight: 600; font-size: calc(12px * var(--fs)); letter-spacing: .24em; text-transform: uppercase; color: var(--foam); }
+.place--home { right: var(--gutter); top: 2vw; width: calc(46vw * var(--img)); }
+.place--home img { aspect-ratio: 4 / 3; }
+.place--office { left: var(--gutter); top: calc(21vw * var(--img)); width: calc(33vw * var(--img)); }
+.place--office img { aspect-ratio: 3 / 4; }
+.place--house { right: calc(var(--gutter) + 6vw); top: calc(45vw * var(--img)); width: calc(38vw * var(--img)); }
+.place--house img { aspect-ratio: 1 / 1; border-radius: 50% 50% calc(16px * var(--rad)) calc(16px * var(--rad)) / 40% 40% calc(16px * var(--rad)) calc(16px * var(--rad)); }
+
+/* ---------- ДНО ---------- */
+.floor { position: relative; z-index: 2; min-height: 100vh; min-height: 100svh; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+.floor__bg {
+  position: absolute; inset: 0;
+  background: var(--floor-img) center bottom / cover no-repeat;
+  -webkit-mask: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 30%, #000 70%);
+  mask: linear-gradient(180deg, transparent 0%, rgba(0,0,0,.35) 30%, #000 70%);
+}
+.floor__bg::after { content: ''; position: absolute; inset: 0; opacity: calc(.3 + var(--shade) * .6); background: linear-gradient(90deg, rgba(14, 34, 70, .85) 0%, rgba(14, 34, 70, .4) 55%, rgba(14, 34, 70, .1) 100%), linear-gradient(180deg, rgba(14, 22, 48, .5) 0%, rgba(14, 22, 48, 0) 60%, rgba(14, 22, 48, .55) 100%); }
+.floor__inner { position: relative; padding: max(18vh, 130px) var(--gutter) 0; display: flex; flex-direction: column; align-items: flex-start; gap: 34px; }
+.floor h2 { font-weight: 400; font-size: calc(clamp(18px, 1.6vw, 24px) * var(--fs)); letter-spacing: .04em; color: var(--pearl); }
+.floor__phone { white-space: nowrap; font-size: calc(clamp(38px, 7.4vw, 120px) * var(--fh)); line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; transition: color .3s; text-shadow: 0 2px 30px rgba(14, 34, 70, .4); }
+.floor__phone:hover { color: var(--glow); }
+.floor__facts { display: flex; gap: 72px; flex-wrap: wrap; text-shadow: 0 1px 16px rgba(14, 34, 70, .5); }
+.floor__facts dt { font-size: calc(11px * var(--fs)); font-weight: 600; letter-spacing: .24em; text-transform: uppercase; color: var(--pearl); margin-bottom: 6px; }
+.floor__facts dd { font-size: calc(19px * var(--fs)); font-weight: 600; }
+.floor__facts .is-tbd { color: var(--foam); font-style: normal; }
+.floor__actions { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 8px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 12px; height: 58px; padding: 0 30px; border-radius: calc(10px * var(--rad));
+  font-weight: 600; font-size: calc(15px * var(--fs)); letter-spacing: .03em;
+  transition: background .3s, box-shadow .3s, color .3s;
+}
+.btn svg { transition: transform .3s var(--ease-out); }
+.btn:hover svg:last-child { transform: translateX(3px); }
+.btn--warm { background: var(--clown); color: var(--water-abyss); }
+.btn--warm:hover { background: var(--peach); }
+.btn--glow { border: 1.5px solid var(--glow); color: var(--foam); background: rgba(18, 26, 54, .45); box-shadow: 0 12px 26px -16px rgba(0, 0, 0, .6); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.btn--glow:hover { background: rgba(95, 214, 232, .2); }
+.foot { position: relative; display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 28px var(--gutter) 84px; font-size: calc(12px * var(--fs)); letter-spacing: .03em; color: var(--foam); background: linear-gradient(180deg, rgba(14, 22, 48, 0), rgba(14, 22, 48, .82) 45%); }
+
+/* ---------- Адаптив ---------- */
+@media (max-width: 1100px) {
+  .top__nav { display: none; }
+}
+@media (min-width: 761px) and (max-width: 1100px) {
+  .gauge { display: none; }
+}
+@media (max-width: 760px) {
+  :root { --inset: calc(var(--inset-user, 28px) * .36); }
+  .top { padding: 22px 22px 0; gap: 16px; transform: none; }
+  .top__phone span { display: none; }
+  .top__phone { padding: 12px; margin-left: auto; }
+  .logo svg { width: 32px; height: 32px; }
+  /* шкала глубины на телефоне: тонкая линия по нижнему краю шапки и счётчик метров рядом с телефоном */
+  .gauge { z-index: 31; inset: 0 0 auto; height: 80px; transform: none; display: block; padding: 0; border-radius: 0; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; pointer-events: none; font-size: calc(10px * var(--fs)); }
+  .gauge__cap { display: none; }
+  .gauge__rail { position: absolute; left: 0; right: 0; bottom: 0; width: auto; height: 1px; background: rgba(220, 227, 245, .14); }
+  .gauge__fill { left: 0; top: -.5px; width: 100%; height: 2px; background: linear-gradient(90deg, var(--glow), var(--foam)); transform-origin: left; transform: scaleX(var(--depth, 0)); }
+  .gauge__num { position: absolute; right: 78px; top: 43px; translate: 0 -50%; letter-spacing: .14em; text-transform: uppercase; color: var(--lilac); }
+  .gauge__num::before { content: 'глубина '; }
+  .gauge__num b { font-size: calc(12px * var(--fs)); }
+  .hero { height: calc(var(--hero-len, 560) * .82vh); }
+  .hero__title { top: 17vh; transform: none; }
+  .hero__title .t1 { font-size: calc(8.6vw * var(--fh)); letter-spacing: .4em; }
+  .hero__title .t2 { font-size: calc(8.6vw * var(--fh)); letter-spacing: .07em; margin-right: -.07em; }
+  .hero__shade { background: linear-gradient(180deg, rgba(226, 247, 251, .85) 0%, rgba(226, 247, 251, .6) 38%, rgba(226, 247, 251, 0) 56%); }
+  .note:not(.is-active) .note__card { opacity: 0 !important; }
+  .note__card { background: rgba(18, 38, 74, .78); }
+  .note__line { display: none; }
+  .note__card { top: 14px; translate: 0 0; width: 168px; padding: 10px 12px; }
+  .note--l .note__card { right: auto; left: -40px; }
+  .note--r .note__card { left: auto; right: -40px; }
+  .note--d .note__card, .note--dr .note__card { top: 14px; right: auto; left: -60px; }
+  .note__card span { font-size: calc(12px * var(--fs)); }
+  .note__card b { font-size: calc(11px * var(--fs)); }
+  .hero__lead { left: var(--gutter); top: calc(17vh + 26vw); bottom: auto; right: 30%; font-size: calc(14px * var(--fs)); }
+  .hero__title { left: var(--gutter); }
+  .hero__steps { bottom: 140px; }
+  .hero__cue { display: none; }
+  .visit { left: 16px; right: 16px; bottom: 74px; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 14px; }
+  .visit__row { gap: 8px; white-space: nowrap; font-size: calc(13px * var(--fs)); }
+  .visit__call { padding: 0 16px; }
+  .hall { padding-top: 14vh; }
+  .hall__intro { grid-template-columns: 1fr; gap: 16px; }
+  .hall__intro p { justify-self: start; }
+  .hall__body { grid-template-columns: 1fr; }
+  .hall__window { order: -1; position: sticky; top: 76px; z-index: 1; height: calc(30vh * var(--img)); border-radius: calc(120px * var(--rad)) calc(120px * var(--rad)) calc(16px * var(--rad)) calc(16px * var(--rad)); margin-bottom: 16px; }
+  .hall__list { position: relative; z-index: 0; }
+  .hall__name { font-size: calc(7vw * var(--fh)); }
+  .hall__name::before { left: -18px; }
+  .hall__list li.is-on .hall__name { transform: translateX(18px); }
+  /* пункты растворяются, уходя под окно: opacity ставит main.js */
+  .hall__list li { transition: opacity .2s linear; }
+  .hall__hint { display: none; }
+  .reef { height: 240vh; }
+  .reef__window { clip-path: inset(21vh 14% 25vh 14% round 30vh 30vh 14px 14px); }
+  /* на телефоне «Морской» над окном, «риф» под ним: белые буквы не ложатся на светлое видео */
+  .reef__title { display: block; font-size: calc(11vw * var(--fh)); text-align: center; padding: 0; }
+  .reef__title span { position: absolute; left: 0; right: 0; }
+  /* окно опущено ниже шапки, чтобы «Морской» не прятался под ней даже на коротких экранах */
+  .reef__title span:first-child { top: calc(21vh - 1.25em); }
+  .reef__title span:last-child { top: calc(75vh + .25em); margin-right: 0; }
+  .reef__side { left: var(--gutter); bottom: 8vh; text-align: left; font-size: calc(14px * var(--fs)); }
+  .reef__caption { font-size: calc(8vw * var(--fh)); bottom: 10vh; }
+  /* шаги остаются горизонтальной лентой, как на десктопе: экран закреплён, скролл листает карточки.
+     Ширина карточек ограничена высотой экрана, чтобы на низких телефонах они не заезжали под заголовок. */
+  .start__pin { padding-bottom: 7vh; }
+  .start__title { top: calc(82px + 3vh); font-size: calc(6vw * var(--fh)); }
+  .start__track { gap: 8vw; padding: 0 var(--gutter); }
+  .step { width: calc(min(80vw, var(--vh) * .74 - 256px) * var(--img)); gap: 18px; }
+  .step--tall { width: calc(min(66vw, var(--vh) * .63 - 218px) * var(--img)); }
+  .step--wide { width: calc(84vw * var(--img)); }
+  .step__text { column-gap: 14px; }
+  .step__n { font-size: calc(48px * var(--fh)); }
+  .step h3 { font-size: calc(21px * var(--fh)); }
+  .step p { font-size: calc(14px * var(--fs)); line-height: 1.6; }
+  .places { height: auto; padding: 10vh var(--gutter) 6vh; display: flex; flex-direction: column; gap: 9vh; }
+  .places__title { position: static; font-size: calc(9vw * var(--fh)); }
+  .place { position: static; width: 100% !important; max-width: none; }
+  .place--office { width: calc(74% * var(--img)) !important; max-width: 100%; align-self: flex-end; }
+  .floor__inner { padding-top: 110px; gap: 22px; }
+  .floor__phone { font-size: calc(7.4vw * var(--fh)); }
+  .floor__facts { gap: 24px; flex-direction: column; }
+  .btn { width: 100%; justify-content: center; }
+  .foot { flex-direction: column; padding-bottom: 96px; }
+}
+/* низкие телефоны (iPhone SE и т.п.): подпись рифа не наезжает на «риф» под окном */
+@media (max-width: 760px) and (max-height: 720px) {
+  .reef__side { bottom: 5vh; font-size: calc(13px * var(--fs)); line-height: 1.55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: .01ms !important; }
+  .silt { display: none; }
+}
