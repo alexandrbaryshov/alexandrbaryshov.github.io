@@ -258,6 +258,7 @@ html.is-hero .gauge { opacity: 0; pointer-events: none; }
 .hero__cue svg { order: 2; width: 16px; height: 16px; color: var(--clown); animation: nudge 2.4s var(--ease) infinite; }
 @keyframes nudge { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
 .hero__cue:hover { color: var(--teal); }
+.hero__swipe { display: none; }
 
 .visit {
   position: absolute; z-index: 4; right: calc(var(--inset) + 32px); bottom: calc(var(--inset) + 32px);
@@ -451,17 +452,29 @@ html.no-scrub .step { scroll-snap-align: center; }
   .note__card b { font-size: calc(11px * var(--fs)); }
   .hero__lead { left: var(--gutter); top: calc(17vh + 26vw); bottom: auto; right: 30%; font-size: calc(14px * var(--fs)); }
   .hero__title { left: var(--gutter); }
-  .hero__steps { bottom: 140px; }
+  .hero__steps { bottom: calc(28px + env(safe-area-inset-bottom, 0px)); }
   .hero__cue { display: none; }
-  .visit { left: 16px; right: 16px; bottom: 74px; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 14px; }
-  .visit__row { gap: 8px; white-space: nowrap; font-size: calc(13px * var(--fs)); }
-  .visit__call { padding: 0 16px; }
+  /* плашка с адресом закрывала экран при листании: на телефоне адрес и звонок — в шапке и в «Дне» */
+  .visit { display: none; }
+  .hero__swipe {
+    position: absolute; z-index: 4; left: 50%; bottom: calc(76px + env(safe-area-inset-bottom, 0px)); translate: -50% 0;
+    display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 0;
+    font-size: calc(10px * var(--fs)); font-weight: 700; letter-spacing: .32em; text-indent: .32em; text-transform: uppercase; white-space: nowrap;
+    color: var(--ink); text-shadow: 0 0 2px rgba(240, 252, 255, .9), 0 0 12px rgba(240, 252, 255, .85);
+    pointer-events: none;
+  }
+  .hero__swipe svg { width: 16px; height: 16px; color: var(--clown); animation: nudge 2.4s var(--ease) infinite; }
   .hall { padding-top: 14vh; }
   .hall__intro { grid-template-columns: 1fr; gap: 16px; }
   .hall__intro p { justify-self: start; }
   .hall__body { grid-template-columns: 1fr; }
   /* липнет ниже тёмной плашки шапки (80px), чтобы верх арки не срезался */
   .hall__window { order: -1; position: sticky; top: 94px; z-index: 1; height: calc(30vh * var(--img)); border-radius: calc(120px * var(--rad)) calc(120px * var(--rad)) calc(16px * var(--rad)) calc(16px * var(--rad)); margin-bottom: 16px; }
+  /* окно на своём слое; кадры стоят неподвижно и сменяются чистым растворением —
+     без масштаба и шторки, которые в маленьком окне выглядели как дрожание */
+  .hall__window { transform: translateZ(0); }
+  .hall__window img { clip-path: none; transform: none; opacity: 0; transition: opacity .55s var(--ease); will-change: opacity; }
+  .hall__window img.is-on { clip-path: none; transform: none; opacity: 1; }
   .hall__list { position: relative; z-index: 0; }
   .hall__name { font-size: calc(7vw * var(--fh)); }
   .hall__name::before { left: -18px; }

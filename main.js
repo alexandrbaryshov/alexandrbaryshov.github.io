@@ -123,8 +123,14 @@
       ticking = false;
       // активный пункт — последний, чей верх прошёл линию на 58% экрана; считаем по положению,
       // а не по пересечению, чтобы быстрый скролл не проскакивал пункты
-      var line = innerHeight * 0.58, at = 0;
-      items.forEach(function (li, k) { if (li.getBoundingClientRect().top <= line) at = k; });
+      // с запасом в 28px: палец, замерший у границы пунктов, не перещёлкивает кадры туда-обратно
+      var line = innerHeight * 0.58, gap = 28, lo = 0, hi = 0;
+      items.forEach(function (li, k) {
+        var t = li.getBoundingClientRect().top;
+        if (t <= line - gap) lo = k;
+        if (t <= line + gap) hi = k;
+      });
+      var at = picked < lo ? lo : picked > hi ? hi : picked;
       if (at !== picked) { picked = at; show(at); }
       // телефон: окно липнет сверху, список уезжает под него — пункты гаснут у нижнего края окна,
       // чтобы буквы не выглядывали из-за скруглённых углов арки
@@ -293,7 +299,10 @@
       .fromTo('.hero__title .t2', { x: 0 }, { x: mobile ? -12 : -40, duration: 12 }, 0)
       .fromTo('.hero__title .t1', { x: 0 }, { x: mobile ? 14 : 30, duration: 12 }, 0)
       // заголовок и лид уходят, как только камера трогается к рыбе
-      .to(['.hero__title', '.hero__lead', '.hero__cue'], { autoAlpha: 0, y: -24, duration: 5, stagger: 0.8 }, 9)
+      .to(['.hero__title', '.hero__lead', '.hero__cue', '.hero__swipe'], { autoAlpha: 0, y: -24, duration: 5, stagger: 0.8 }, 9)
+      // камера вернулась к общему плану (HERO_SCENE.fadeBack) — возвращается и заголовок
+      .fromTo(['.hero__title', '.hero__lead'], { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 4, stagger: 0.6, immediateRender: false }, 95.4)
+      .to(['.hero__title .t1', '.hero__title .t2'], { x: 0, duration: 0.1 }, 95.4)
       // финал: кадр раскрывается на весь экран, адрес и индикатор уходят
       .fromTo(frame, { '--open': 0 }, { '--open': 1, duration: 6, ease: 'power2.inOut' }, 94)
       .to(['.visit', '.hero__steps'], { autoAlpha: 0, y: 20, duration: 4 }, 94);
