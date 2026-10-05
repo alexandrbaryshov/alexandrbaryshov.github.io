@@ -9,9 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700&display=swap&subset=cyrillic" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
-<!-- телефон: видео hero начинает качаться сразу, main.js заберёт его из этой загрузки -->
-<link rel="preload" href="assets/media/hero-720.mp4" as="fetch" crossorigin media="(max-width: 760px)">
+<!-- ?v= — новая версия стилей и скрипта после каждой выкладки: браузер не смешивает свежий HTML со старыми файлами из кэша -->
+<link rel="stylesheet" href="style.css?v=2026-10-05b">
+<!-- видео hero начинает качаться сразу, main.js заберёт его из этой загрузки (до 900px — лёгкая версия, как в main.js) -->
+<link rel="preload" href="assets/media/hero-720.mp4" as="fetch" crossorigin media="(max-width: 899px)">
+<link rel="preload" href="assets/media/hero-1080.mp4" as="fetch" crossorigin media="(min-width: 900px)">
 </head>
 <body>
 
@@ -210,6 +212,6 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="main.js"></script>
+<script src="main.js?v=2026-10-05b"></script>
 </body>
 </html>

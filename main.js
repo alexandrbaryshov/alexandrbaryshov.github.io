@@ -225,8 +225,9 @@
       // muted + playsinline: мобильные браузеры разрешают play() без касания, после него работает перемотка
       var pr = video.play(); if (pr && pr.catch) pr.catch(function () {});
     }
-    // на телефоне видео скачиваем целиком: перемотка по скроллу идёт из памяти, без подгрузки кусками на каждом кадре
-    if (innerWidth < 761 && window.fetch && window.URL && URL.createObjectURL) {
+    // видео скачиваем целиком — одинаково на телефоне и компьютере: перемотка по скроллу идёт из памяти,
+    // без подгрузки кусками на каждом кадре и без зависимости от того, отдаёт ли сервер файл частями
+    if (window.fetch && window.URL && URL.createObjectURL) {
       fetch(src).then(function (r) { if (!r.ok) throw r; return r.blob(); })
         .then(function (b) { attach(URL.createObjectURL(b)); }, function () { attach(src); });
     } else attach(src);
@@ -241,6 +242,8 @@
     var unlock = function () { var pr = video.play(); if (pr && pr.then) pr.then(function () { video.pause(); }, function () {}); removeEventListener('touchstart', unlock); };
     addEventListener('touchstart', unlock, { passive: true });
     (function tick() {
+      // страховка: если loadeddata проскочило мимо (кэш, медленная сеть), видео всё равно включается
+      if (!state.ready && !state.failed && video.readyState >= 2) ready();
       if (state.ready && state.active && video.duration) {
         state.cur += (state.target - state.cur) * 0.05;   // мягкий догон
         if (Math.abs(video.currentTime - state.cur) > 0.02 && !video.seeking) video.currentTime = state.cur;
@@ -324,16 +327,21 @@
       .to({}, { duration: 1.5 });
   }
 
-  /* ---------- ПЕРВЫЙ АКВАРИУМ: стопка шагов (и на телефоне) ----------
+  /* ---------- ПЕРВЫЙ АКВАРИУМ: стопка шагов, одинаково на компьютере и телефоне ----------
+     Карточка подъезжает снизу: фото выплывает из глубины, номер, заголовок и текст поднимаются следом.
      Каждая карточка, кроме последней, закрепляется у верха экрана до прихода последней;
-     следующая наезжает поверх, а прежняя отступает вглубь: сжимается и тускнеет по её ходу. */
+     следующая наезжает поверх, а прежняя отступает вглубь: сжимается и темнеет. Именно темнеет,
+     а не прозрачнеет: сквозь полупрозрачную карточку просвечивал текст нижних. */
   function setupStart() {
     var cards = $$('.stack__card'), last = cards[cards.length - 1];
     cards.forEach(function (card, i) {
+      gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: { trigger: card, start: 'top bottom', end: 'top 20%', scrub: 0.6 } })
+        .fromTo($('img', card), { scale: 0.86, autoAlpha: 0.35 }, { scale: 1, autoAlpha: 1, duration: 1 }, 0)
+        .fromTo($$('.step__text > *', card), { y: 48, autoAlpha: 0 }, { y: 0, autoAlpha: 1, duration: 0.5, stagger: 0.12 }, 0.3);
       if (card === last) return;
       ScrollTrigger.create({ trigger: card, start: 'top top', endTrigger: last, end: 'top top', pin: true, pinSpacing: false });
       gsap.to(card, {
-        scale: 0.92, opacity: 0.55, ease: 'none',
+        scale: 0.92, '--dim': 0.55, ease: 'none',
         scrollTrigger: { trigger: cards[i + 1], start: 'top bottom', end: 'top top', scrub: true }
       });
     });
