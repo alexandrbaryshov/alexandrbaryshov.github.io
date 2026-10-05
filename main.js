@@ -92,37 +92,55 @@
 
   /* ---------- Зал: указатель ассортимента ---------- */
   function setupHall() {
-    var items = $$('.hall__list li'), imgs = $$('.hall__window img'), z = 1, cur = -1;
+    var items = $$('.hall__list li'), imgs = $$('.hall__window img'), win = $('.hall__window');
+    var z = 1, cur = -1, picked = -1, tidy;
+    // кадры грузим и декодируем заранее, на подходе к залу: иначе картинка «выпрыгивает» посреди раскрытия
+    function preload() { imgs.forEach(function (im) { im.loading = 'eager'; if (im.decode) im.decode().catch(function () {}); }); }
+    if ('IntersectionObserver' in window) {
+      var pio = new IntersectionObserver(function (es) { if (es[0].isIntersecting) { preload(); pio.disconnect(); } }, { rootMargin: '150% 0px' });
+      pio.observe($('.hall'));
+    } else preload();
+    // новый кадр раскрывается поверх прежних; те не трогаем, пока он не закроет их целиком — без рывков и подмен
     function show(i) {
       if (i === cur) return;
-      items.forEach(function (li, k) { li.classList.toggle('is-on', k === i); });
-      imgs.forEach(function (im) { im.classList.remove('is-prev'); });
-      if (cur >= 0) imgs[cur].classList.add('is-prev');
-      imgs.forEach(function (im, k) { if (k !== i) im.classList.remove('is-on'); });
-      var im = imgs[i]; im.style.zIndex = ++z; im.classList.remove('is-on'); void im.offsetWidth; im.classList.add('is-on');
       cur = i;
+      items.forEach(function (li, k) { li.classList.toggle('is-on', k === i); });
+      var im = imgs[i];
+      function reveal() {
+        if (cur !== i) return;
+        im.style.zIndex = ++z; im.classList.remove('is-on'); void im.offsetWidth; im.classList.add('is-on');
+        clearTimeout(tidy);
+        tidy = setTimeout(function () { imgs.forEach(function (o, k) { if (k !== cur) o.classList.remove('is-on'); }); }, 1100);
+      }
+      if (im.complete && im.naturalWidth) reveal();
+      else if (im.decode) im.decode().then(reveal, reveal);
+      else im.addEventListener('load', reveal, { once: true });
     }
     items.forEach(function (li, i) { li.addEventListener('mouseenter', function () { show(i); }); });
     show(0);
-    // телефон: окно липнет сверху, список уезжает под него — пункты гаснут у нижнего края окна,
-    // чтобы буквы не выглядывали из-за скруглённых углов арки
-    var win = $('.hall__window'), fadeT = false;
-    function fade() {
-      fadeT = false;
-      var mobile = innerWidth < 761, wb = win.getBoundingClientRect().bottom;
+    var ticking = false;
+    function update() {
+      ticking = false;
+      // активный пункт — последний, чей верх прошёл линию на 58% экрана; считаем по положению,
+      // а не по пересечению, чтобы быстрый скролл не проскакивал пункты
+      var line = innerHeight * 0.58, at = 0;
+      items.forEach(function (li, k) { if (li.getBoundingClientRect().top <= line) at = k; });
+      if (at !== picked) { picked = at; show(at); }
+      // телефон: окно липнет сверху, список уезжает под него — пункты гаснут у нижнего края окна,
+      // чтобы буквы не выглядывали из-за скруглённых углов арки
+      var mobile = innerWidth < 761, wr = win.getBoundingClientRect();
       items.forEach(function (li) {
         if (!mobile) { li.style.opacity = ''; return; }
         var r = li.getBoundingClientRect(), c = r.top + r.height / 2;
-        li.style.opacity = Math.min(1, Math.max(0, (c - wb) / 48)).toFixed(2);
+        li.style.opacity = Math.min(1, Math.max(0, (c - wr.bottom) / 48)).toFixed(2);
       });
+      // в конце зала окно отлипает и уходит вверх: растворяем его, а не режем шапкой
+      var lift = mobile ? (parseFloat(getComputedStyle(win).top) || 0) - wr.top : 0;
+      win.style.opacity = lift > 0 ? Math.max(0, 1 - lift / (wr.height * 0.45)).toFixed(3) : '';
     }
-    addEventListener('scroll', function () { if (!fadeT) { fadeT = true; requestAnimationFrame(fade); } }, { passive: true });
-    addEventListener('resize', fade);
-    fade();
-    if (!hasGsap) return;
-    items.forEach(function (li, i) {
-      ScrollTrigger.create({ trigger: li, start: 'top 58%', end: 'bottom 58%', onToggle: function (s) { if (s.isActive) show(i); } });
-    });
+    addEventListener('scroll', function () { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+    addEventListener('resize', update);
+    update();
   }
 
   // без GSAP или без анимации ленту шагов листают пальцем (см. html.no-scrub в CSS)
@@ -146,8 +164,11 @@
       { show: [0.885, 0.95], at: [0.745, 0.42, 'r', 56] }   // хвост: халфмун
     ],
     steps: [0.34, 0.62, 0.88],                              // границы индикатора остановок
-    // на узком экране кадр обрезан по бокам: фокус следует за особенностью рыбы
-    mobileFocus: [[0, 0.62], [0.10, 0.62], [0.34, 0.47], [0.44, 0.47], [0.62, 0.55], [0.72, 0.55], [0.88, 0.70], [1, 0.70]]
+    // на узком экране кадр обрезан по бокам: фокус следует за особенностью рыбы — по секунде видео,
+    // поэтому кадр не уезжает, пока видео не догрузилось
+    mobileFocus: [[0, 0.62], [8, 0.47], [16, 0.55], [24, 0.70]],
+    // после хвоста видео растворяется в первом кадре (фото под ним): сцена заканчивается общим планом
+    fadeBack: [0.95, 1]
   };
 
   function lerpMap(m, p) {
@@ -191,7 +212,8 @@
     if (!video) return null;
     var small = innerWidth < 900 || (navigator.connection && navigator.connection.saveData);
     var src = video.getAttribute(small ? 'data-src-small' : 'data-src');
-    var state = { target: 0, cur: 0, ready: false, active: true };
+    var state = { target: 0, cur: 0, ready: false, failed: false, active: true };
+    video.addEventListener('error', function () { if (!state.ready) state.failed = true; });
     function attach(s) {
       video.src = s; video.load();
       // muted + playsinline: мобильные браузеры разрешают play() без касания, после него работает перемотка
@@ -217,6 +239,7 @@
         state.cur += (state.target - state.cur) * 0.05;   // мягкий догон
         if (Math.abs(video.currentTime - state.cur) > 0.02 && !video.seeking) video.currentTime = state.cur;
       }
+      if (state.onFrame) state.onFrame();
       requestAnimationFrame(tick);
     })();
     state.video = video;
@@ -229,22 +252,37 @@
     var vs = setupHeroVideo();
 
     placeHeroNotes();
-    function syncHero(p) {
+    var heroP = 0, lastHx = '';
+    // кадр сцены: подписи и фокус следуют за тем, что реально показывает видео, а не только за скроллом
+    function renderHero() {
+      var p = heroP, dur = vs && vs.video.duration || 24;
+      var live = !vs || vs.failed;                                   // видео нет — ведёт скролл
+      var t = live ? lerpMap(HERO_SCENE.map, p) : vs.ready ? vs.cur / dur * 24 : 0;
+      var arrived = live || (vs.ready && Math.abs(vs.cur - vs.target) < 0.4);
       HERO_SCENE.stops.forEach(function (s, i) {
-        var on = p >= s.show[0] && p < s.show[1];
+        // подпись всплывает, когда камера уже на месте (первая — сразу, это общий план)
+        var on = p >= s.show[0] && p < s.show[1] && (arrived || i === 0);
         notes[i].classList.toggle('is-shown', on);
         notes[i].classList.toggle('is-active', on);
       });
+      var fb = HERO_SCENE.fadeBack, back = Math.min(1, Math.max(0, (p - fb[0]) / (fb[1] - fb[0])));
+      if (vs) vs.video.style.setProperty('--back', back.toFixed(3));
+      if (innerWidth < 760) {
+        var f = HERO_SCENE.mobileFocus, hx = lerpMap(f, t) * (1 - back) + f[0][1] * back;
+        hx = hx.toFixed(4);
+        if (hx !== lastHx) { lastHx = hx; document.documentElement.style.setProperty('--hx', hx); clampNotes(); }
+      }
+    }
+    function syncHero(p) {
+      heroP = p;
       var b = HERO_SCENE.steps, idx = p < b[0] ? 0 : p < b[1] ? 1 : p < b[2] ? 2 : 3;
       steps.forEach(function (li, i) { li.classList.toggle('is-on', i === idx); li.classList.toggle('is-done', i < idx); });
       top.classList.toggle('is-open', p > 0.93);
       document.documentElement.classList.toggle('is-hero', p < 0.93);
       if (vs) { vs.target = heroTime(p, vs.video.duration || 24); vs.active = p < 1; }
-      if (innerWidth < 760) {
-        document.documentElement.style.setProperty('--hx', lerpMap(HERO_SCENE.mobileFocus, p).toFixed(4));
-        clampNotes();
-      }
+      else renderHero();
     }
+    if (vs) vs.onFrame = renderHero;
 
     var tl = gsap.timeline({
       defaults: { ease: 'none' },
