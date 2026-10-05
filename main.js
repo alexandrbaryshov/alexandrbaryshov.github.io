@@ -149,7 +149,7 @@
     update();
   }
 
-  // без GSAP или без анимации ленту шагов листают пальцем (см. html.no-scrub в CSS)
+  // без GSAP стопку шагов держит CSS sticky, без анимации она становится списком (см. html.no-scrub в CSS)
   if (!hasGsap || reduce) document.documentElement.classList.add('no-scrub');
   if (!hasGsap) { setupSilt(); setupGauge(); setupNav(); setupVideo(); setupHall(); return; }
   gsap.registerPlugin(ScrollTrigger);
@@ -324,18 +324,17 @@
       .to({}, { duration: 1.5 });
   }
 
-  /* ---------- ПЕРВЫЙ АКВАРИУМ: горизонтальная лента шагов (и на телефоне) ---------- */
+  /* ---------- ПЕРВЫЙ АКВАРИУМ: стопка шагов (и на телефоне) ----------
+     Каждая карточка, кроме последней, закрепляется у верха экрана до прихода последней;
+     следующая наезжает поверх, а прежняя отступает вглубь: сжимается и тускнеет по её ходу. */
   function setupStart() {
-    var track = $('.start__track');
-    var dist = function () { return track.scrollWidth - innerWidth; };
-    var tween = gsap.to(track, {
-      x: function () { return -dist(); }, ease: 'none',
-      scrollTrigger: { trigger: '.start__pin', start: 'top top', end: function () { return '+=' + dist(); }, pin: true, scrub: 0.8, invalidateOnRefresh: true }
-    });
-    $$('.step').forEach(function (s) {
-      gsap.fromTo($('img', s), { scale: 0.86, opacity: 0.35 }, {
-        scale: 1, opacity: 1, ease: 'none',
-        scrollTrigger: { trigger: s, containerAnimation: tween, start: 'left 95%', end: 'left 45%', scrub: true }
+    var cards = $$('.stack__card'), last = cards[cards.length - 1];
+    cards.forEach(function (card, i) {
+      if (card === last) return;
+      ScrollTrigger.create({ trigger: card, start: 'top top', endTrigger: last, end: 'top top', pin: true, pinSpacing: false });
+      gsap.to(card, {
+        scale: 0.92, opacity: 0.55, ease: 'none',
+        scrollTrigger: { trigger: cards[i + 1], start: 'top bottom', end: 'top top', scrub: true }
       });
     });
   }

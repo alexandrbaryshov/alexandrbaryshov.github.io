@@ -137,29 +137,36 @@
     </div>
   </section>
 
-  <!-- ПЕРВЫЙ АКВАРИУМ: четыре шага, горизонтально -->
+  <!-- ПЕРВЫЙ АКВАРИУМ: четыре шага стопкой. Карточка закрепляется у верха экрана, следующая наезжает на неё,
+       прежняя отступает вглубь (main.js: setupStart). Без GSAP стопку держит CSS sticky, без анимации — простой список. -->
   <section class="start" id="start" aria-labelledby="start-h">
-    <div class="start__pin">
-      <h2 class="start__title" id="start-h">Первый аквариум —<br>вместе с нами</h2>
-      <div class="start__track">
+    <h2 class="start__title" id="start-h">Первый аквариум —<br>вместе с нами</h2>
+    <ol class="stack">
+      <li class="stack__card" style="--i: 0">
         <article class="step">
           <img data-slot="step-0" src="assets/img/step-0-1.webp" alt="Аквариумы разного объёма на полках магазина" loading="lazy">
-          <div class="step__text"><span class="step__n">1</span><h3>Подберём</h3><p>Объём, место и обитателей — под ваш дом, офис или частный дом.</p></div>
+          <div class="step__text"><span class="step__n" aria-hidden="true">1</span><h3>Подберём</h3><p>Объём, место и обитателей — под ваш дом, офис или частный дом.</p></div>
         </article>
-        <article class="step step--tall">
+      </li>
+      <li class="stack__card" style="--i: 1">
+        <article class="step">
           <img data-slot="step-1" src="assets/img/step-1-1.webp" alt="Оформление аквариума камнями и корягой" loading="lazy">
-          <div class="step__text"><span class="step__n">2</span><h3>Соберём</h3><p>Фильтр, свет, обогрев, грунт и декор, которые работают вместе.</p></div>
+          <div class="step__text"><span class="step__n" aria-hidden="true">2</span><h3>Соберём</h3><p>Фильтр, свет, обогрев, грунт и декор, которые работают вместе.</p></div>
         </article>
+      </li>
+      <li class="stack__card" style="--i: 2">
         <article class="step">
           <img data-slot="step-2" src="assets/img/step-2-1.webp" alt="Запуск аквариума с растениями" loading="lazy">
-          <div class="step__text"><span class="step__n">3</span><h3>Запустим</h3><p>Подскажем, как подготовить воду и когда заселять рыб.</p></div>
+          <div class="step__text"><span class="step__n" aria-hidden="true">3</span><h3>Запустим</h3><p>Подскажем, как подготовить воду и когда заселять рыб.</p></div>
         </article>
-        <article class="step step--wide">
+      </li>
+      <li class="stack__card" style="--i: 3">
+        <article class="step">
           <img data-slot="step-3" src="assets/img/step-3-1.webp" alt="Живой аквариум с креветками и рыбами" loading="lazy">
-          <div class="step__text"><span class="step__n">4</span><h3>Будем рядом</h3><p>Приходите с вопросами. Продавцы — сами аквариумисты.</p></div>
+          <div class="step__text"><span class="step__n" aria-hidden="true">4</span><h3>Будем рядом</h3><p>Приходите с вопросами. Продавцы — сами аквариумисты.</p></div>
         </article>
-      </div>
-    </div>
+      </li>
+    </ol>
   </section>
 
   <!-- ГДЕ ЖИВУТ АКВАРИУМЫ: три глубины параллакса -->
